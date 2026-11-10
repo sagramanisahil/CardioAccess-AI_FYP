@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+*.local
+_srs_media
+_sds_media
