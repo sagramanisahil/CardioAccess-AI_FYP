@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
-import { isAdminUser } from "../data/seed";
+import { isAdminUser } from "../data/authorization";
 import { useAuth } from "../hooks/useAuth";
 import AdminUsersPage from "../pages/AdminUsersPage";
 import AnalyticsPage from "../pages/AnalyticsPage";
@@ -19,7 +19,8 @@ import SettingsPage from "../pages/SettingsPage";
 import SignInPage from "../pages/SignInPage";
 
 function Protected({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-8 text-sm text-slate-500">Checking your session...</div>;
   if (!user) return <Navigate to="/signin" replace />;
   return children;
 }
@@ -31,7 +32,8 @@ function AdminOnly({ children }) {
 }
 
 function Guest({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return <div className="p-8 text-sm text-slate-500">Checking your session...</div>;
   if (user) return <Navigate to="/" replace />;
   return children;
 }

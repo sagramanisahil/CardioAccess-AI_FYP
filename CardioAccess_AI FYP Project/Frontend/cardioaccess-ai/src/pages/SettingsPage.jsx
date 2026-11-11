@@ -11,30 +11,32 @@ export default function SettingsPage() {
   const { notify } = useToast();
   const [name, setName] = useState(user?.name || "");
   const [facility, setFacility] = useState(user?.facility || "");
-  const [currentPassword, setCurrentPassword] = useState("");
   const [nextPassword, setNextPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (name.trim().length < 2) return;
-    updateProfile({ name: name.trim(), facility: facility.trim() });
-    notify("Profile saved in this browser.");
+    const result = await updateProfile({ name: name.trim(), facility: facility.trim() });
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    notify("Profile saved.");
   };
 
-  const savePassword = () => {
+  const savePassword = async () => {
     setError("");
     const checks = passwordChecks(nextPassword, confirm);
     if (!checks.length || !checks.letterNumber || !checks.match) {
       setError("Use at least 8 characters with a letter and a number, and match both fields.");
       return;
     }
-    const result = changePassword({ currentPassword, nextPassword });
+    const result = await changePassword({ nextPassword });
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    setCurrentPassword("");
     setNextPassword("");
     setConfirm("");
     notify("Password updated in this browser.");
@@ -42,7 +44,7 @@ export default function SettingsPage() {
 
   return (
     <PageContainer className="max-w-3xl">
-      <PageHeader eyebrow="Account" title="Settings" description="Profile, notifications, display, and password for this browser." />
+      <PageHeader eyebrow="Account" title="Settings" description="Profile, notifications, display, and password for your account." />
 
       <section className="card card-hover p-5">
         <h2 className="font-display text-base font-semibold">User profile</h2>
@@ -64,20 +66,18 @@ export default function SettingsPage() {
 
       <section className="card card-hover p-5">
         <h2 className="font-display text-base font-semibold">Notification preferences</h2>
-        <Toggle label="Alerts for urgent referrals" checked={settings.emailAlerts} onChange={(value) => { updateSettings({ emailAlerts: value }); notify("Notification preference saved."); }} />
-        <Toggle label="Reminders for cases that need review" checked={settings.reviewReminders} onChange={(value) => updateSettings({ reviewReminders: value })} />
+        <Toggle label="Alerts for urgent referrals" checked={settings.emailAlerts} onChange={async (value) => { const result = await updateSettings({ emailAlerts: value }); notify(result.ok ? "Preference saved." : result.message); }} />
+        <Toggle label="Reminders for cases that need review" checked={settings.reviewReminders} onChange={async (value) => { const result = await updateSettings({ reviewReminders: value }); notify(result.ok ? "Preference saved." : result.message); }} />
       </section>
 
       <section className="card card-hover p-5">
         <h2 className="font-display text-base font-semibold">Display preferences</h2>
-        <Toggle label="Show the screening-support note on the dashboard" checked={settings.showBanner !== false} onChange={(value) => updateSettings({ showBanner: value })} />
+        <Toggle label="Show the screening-support note on the dashboard" checked={settings.showBanner !== false} onChange={async (value) => { const result = await updateSettings({ showBanner: value }); notify(result.ok ? "Preference saved." : result.message); }} />
         <p className="mt-3 text-xs text-slate-500">Display choices do not change screening categories.</p>
       </section>
 
       <section className="card card-hover p-5">
         <h2 className="font-display text-base font-semibold">Password</h2>
-        <label className="label mt-4">Current password</label>
-        <input className="field" type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
         <label className="label mt-4">New password</label>
         <input className="field" type="password" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} />
         <label className="label mt-4">Confirm password</label>

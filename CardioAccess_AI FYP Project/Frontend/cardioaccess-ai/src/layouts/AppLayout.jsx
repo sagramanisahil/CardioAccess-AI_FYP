@@ -14,9 +14,9 @@ export default function AppLayout() {
       <AppHeader
         user={user}
         alerts={alerts}
-        onSignOut={() => {
-          logout();
-          navigate("/signin");
+        onSignOut={async () => {
+          const result = await logout();
+          if (result.ok) navigate("/signin");
         }}
       />
       <main className="page-enter mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

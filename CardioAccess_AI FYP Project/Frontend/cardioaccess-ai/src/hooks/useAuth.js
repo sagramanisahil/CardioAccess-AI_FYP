@@ -1,7 +1,8 @@
-import { useApp } from "./useApp";
+import { useContext } from "react";
+import AuthContext from "../context/AuthContext";
 
 export function useAuth() {
-  const { user, login, loginWithGoogle, logout, register, verifyEmail, resetPassword, changePassword, updateProfile, updateSettings, settings } =
-    useApp();
-  return { user, login, loginWithGoogle, logout, register, verifyEmail, resetPassword, changePassword, updateProfile, updateSettings, settings };
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
 }

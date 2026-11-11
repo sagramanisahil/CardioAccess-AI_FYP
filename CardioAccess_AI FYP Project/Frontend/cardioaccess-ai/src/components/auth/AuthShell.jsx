@@ -4,7 +4,6 @@ import { ArrowUp, Eye, EyeOff, Loader2, Menu, X } from "lucide-react";
 import Button from "../ui/Button";
 import Logo from "../layout/Logo";
 import { isEmail, passwordChecks } from "../../data/format";
-import { ADMIN_EMAIL, DEMO_PASSWORD } from "../../data/seed";
 import { useAuth } from "../../hooks/useAuth";
 import { useToast } from "../../hooks/useToast";
 
@@ -12,14 +11,6 @@ const NAV = [
   ["#gap", "Screening"],
   ["#modalities", "Modalities"],
   ["#workflow", "Workflow"],
-];
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const GOOGLE_ACCOUNTS = [
-  { name: "Dr. A. Memon", email: "clinician@bhu-sukkur.pk" },
-  { name: "Sana Rajput", email: "sana.r@bhu-sukkur.pk" },
-  { name: "Dr. Hira Google", email: "hira.clinic@gmail.com" },
 ];
 
 export default function AuthShell({ initialGate = null }) {
@@ -304,24 +295,25 @@ function GoogleButton({ onClick }) {
 }
 
 function AuthWindow({ gate, setGate, onClose }) {
-  const { login, loginWithGoogle, register, resetPassword } = useAuth();
+  const { login, loginWithGoogle, register, resetPassword, changePassword, authError } = useAuth();
   const { notify } = useToast();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("clinician@bhu-sukkur.pk");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [keep, setKeep] = useState(true);
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [nextPassword, setNextPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", role: "Clinician", facility: "", password: "", confirm: "" });
-  const [otherGoogle, setOtherGoogle] = useState(false);
-  const [googleName, setGoogleName] = useState("");
-  const [googleEmail, setGoogleEmail] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", facility: "", password: "", confirm: "" });
   const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
 
-  const titles = { signin: "Sign in", register: "Create account", reset: "Reset password", google: "Google sign-in" };
+  const titles = { signin: "Sign in", register: "Create account", reset: "Reset password", "set-password": "Choose a new password" };
+
+  useEffect(() => {
+    if (window.location.hash.includes("type=recovery")) setGate("set-password");
+  }, [setGate]);
 
   const submitSignIn = async (event) => {
     event.preventDefault();
@@ -331,8 +323,7 @@ function AuthWindow({ gate, setGate, onClose }) {
       return;
     }
     setBusy(true);
-    await wait(500);
-    const result = login({ email, password, keepSignedIn: keep });
+    const result = await login({ email, password });
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
@@ -346,29 +337,43 @@ function AuthWindow({ gate, setGate, onClose }) {
   const submitReset = async (event) => {
     event.preventDefault();
     setError("");
-    const checks = passwordChecks(nextPassword, confirm);
     if (!isEmail(email)) {
       setError("Enter the account email.");
       return;
     }
-    if (!checks.length || !checks.letterNumber || !checks.match) {
-      setError("Use 8 or more characters with a letter and a number, and match the confirmation.");
-      return;
-    }
     setBusy(true);
-    await wait(400);
-    const result = resetPassword({ email, password: nextPassword });
+    const result = await resetPassword({ email });
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    setPassword("");
-    setGate("signin");
-    notify("Password updated for this browser.");
+    setNotice("If an account exists for that address, a password reset link has been sent.");
   };
 
-  const submitRegister = (event) => {
+  const submitNewPassword = async (event) => {
+    event.preventDefault();
+    setError("");
+    const checks = passwordChecks(nextPassword, confirm);
+    if (!checks.length || !checks.letterNumber || !checks.match) {
+      setError("Use 8 or more characters with a letter and a number, and match the confirmation.");
+      return;
+    }
+    setBusy(true);
+    const result = await changePassword({ nextPassword });
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+    setNotice("Password updated. You can now sign in with the new password.");
+    setNextPassword("");
+    setConfirm("");
+    window.history.replaceState(null, "", "/signin");
+    setGate("signin");
+  };
+
+  const submitRegister = async (event) => {
     event.preventDefault();
     setError("");
     const checks = passwordChecks(form.password, form.confirm);
@@ -384,36 +389,34 @@ function AuthWindow({ gate, setGate, onClose }) {
       setError("Use 8 or more characters with a letter and a number, and match the confirmation.");
       return;
     }
-    const result = register(form);
+    setBusy(true);
+    const result = await register(form);
+    setBusy(false);
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    notify("Account created. An administrator verifies the email before sign-in.");
-    setGate("signin");
+    if (result.needsEmailVerification) {
+      setNotice("Account created. Check your email and confirm the verification link before signing in.");
+      setGate("signin");
+      return;
+    }
+    notify("Account created.");
+    onClose();
+    navigate("/");
   };
 
-  const submitGoogle = async (account) => {
+  const submitGoogle = async () => {
     setError("");
-    if (!isEmail(account.email)) {
-      setError("Enter the Google account email.");
-      return;
-    }
-    if (account.name.trim().length < 2) {
-      setError("Enter the name on the Google account.");
-      return;
-    }
     setBusy(true);
-    await wait(450);
-    const result = loginWithGoogle({ email: account.email, name: account.name, keepSignedIn: keep });
+    const result = await loginWithGoogle();
     setBusy(false);
     if (!result.ok) {
       setError(result.message);
       notify(result.message);
       return;
     }
-    notify(result.created ? "Google account added and signed in." : "Signed in with Google.");
-    navigate("/");
+    notify("Continuing with Google.");
   };
 
   return (
@@ -425,13 +428,15 @@ function AuthWindow({ gate, setGate, onClose }) {
           <button type="button" className="text-slate-400 hover:text-white" aria-label="Close" onClick={onClose}><X size={16} /></button>
         </div>
         <div className="kazi-window-body">
+          {authError && <p className="mb-4 rounded-lg border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">{authError}</p>}
+          {notice && <p className="mb-4 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-3 py-2 text-sm text-emerald-100">{notice}</p>}
           {gate === "signin" && (
             <form className="space-y-4" onSubmit={submitSignIn}>
               <div>
                 <p className="text-sm font-semibold text-white">Welcome back</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">Sign in to open the screening workspace. The email and password are checked before the workspace opens.</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">Sign in with your verified CardioAccess account.</p>
               </div>
-              <GoogleButton onClick={() => { setError(""); setGate("google"); }} />
+                <GoogleButton onClick={submitGoogle} />
               <p className="text-center text-[11px] uppercase tracking-[0.14em] text-slate-500">or use email</p>
               <label className="block"><span className="kazi-label">Email address</span><input className="kazi-input" type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
               <label className="block">
@@ -443,11 +448,7 @@ function AuthWindow({ gate, setGate, onClose }) {
                   </button>
                 </span>
               </label>
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 text-slate-300">
-                  <input type="checkbox" checked={keep} onChange={(event) => setKeep(event.target.checked)} className="accent-blue-500" />
-                  Remember me
-                </label>
+              <div className="flex items-center justify-end text-sm">
                 <button type="button" className="font-medium text-sky-300" onClick={() => { setError(""); setGate("reset"); }}>Forgot password</button>
               </div>
               {error && <p className="text-sm text-rose-300">{error}</p>}
@@ -455,23 +456,15 @@ function AuthWindow({ gate, setGate, onClose }) {
                 <button type="button" className="text-sm text-sky-300" onClick={() => { setError(""); setGate("register"); }}>Create account</button>
                 <Button type="submit" disabled={busy}>{busy ? <Loader2 size={16} className="animate-spin" /> : null}{busy ? "Signing in" : "Sign in"}</Button>
               </div>
-              <p className="text-[11px] leading-5 text-slate-500">Clinician {DEMO_PASSWORD} · clinician@bhu-sukkur.pk<br />Administrator Admin123! · {ADMIN_EMAIL}</p>
             </form>
           )}
           {gate === "register" && (
             <form className="space-y-3" onSubmit={submitRegister}>
               <p className="text-sm font-semibold text-white">Create account</p>
-              <GoogleButton onClick={() => { setError(""); setGate("google"); }} />
+              <GoogleButton onClick={submitGoogle} />
               <p className="text-center text-[11px] uppercase tracking-[0.14em] text-slate-500">or register with email</p>
               <label className="block"><span className="kazi-label">Full name</span><input className="kazi-input" value={form.name} onChange={set("name")} /></label>
               <label className="block"><span className="kazi-label">Email</span><input className="kazi-input" type="email" value={form.email} onChange={set("email")} /></label>
-              <label className="block">
-                <span className="kazi-label">Role</span>
-                <select className="kazi-input" value={form.role} onChange={set("role")}>
-                  <option>Clinician</option>
-                  <option>Nurse</option>
-                </select>
-              </label>
               <label className="block"><span className="kazi-label">Facility</span><input className="kazi-input" value={form.facility} onChange={set("facility")} placeholder="Clinic or unit" /></label>
               <label className="block">
                 <span className="kazi-label">Password</span>
@@ -484,50 +477,29 @@ function AuthWindow({ gate, setGate, onClose }) {
               {error && <p className="text-sm text-rose-300">{error}</p>}
               <div className="flex items-center justify-between gap-3">
                 <button type="button" className="text-sm text-sky-300" onClick={() => { setError(""); setGate("signin"); }}>Sign in</button>
-                <Button type="submit">Register</Button>
+                <Button type="submit" disabled={busy}>{busy ? <Loader2 size={16} className="animate-spin" /> : null}{busy ? "Creating account" : "Register"}</Button>
               </div>
-              <p className="text-[11px] leading-5 text-slate-500">A new account needs email verification before sign-in.</p>
+              <p className="text-[11px] leading-5 text-slate-500">New accounts receive the Clinician role. Admin access is provisioned separately.</p>
             </form>
-          )}
-          {gate === "google" && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-semibold text-white">Sign in with Google</p>
-                <p className="mt-1 text-xs leading-5 text-slate-400">Choose an account. CardioAccess checks that it is active. The administrator email is not accepted here.</p>
-              </div>
-              {GOOGLE_ACCOUNTS.map((account) => (
-                <button key={account.email} type="button" disabled={busy} className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-left hover:bg-white/10 disabled:opacity-60" onClick={() => submitGoogle(account)}>
-                  <GoogleMark />
-                  <span>
-                    <span className="block text-sm font-medium text-white">{account.name}</span>
-                    <span className="block text-xs text-slate-400">{account.email}</span>
-                  </span>
-                </button>
-              ))}
-              {otherGoogle ? (
-                <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); submitGoogle({ name: googleName, email: googleEmail }); }}>
-                  <label className="block"><span className="kazi-label">Name on the Google account</span><input className="kazi-input" value={googleName} onChange={(event) => setGoogleName(event.target.value)} /></label>
-                  <label className="block"><span className="kazi-label">Google email</span><input className="kazi-input" type="email" value={googleEmail} onChange={(event) => setGoogleEmail(event.target.value)} /></label>
-                  <Button type="submit" disabled={busy}>{busy ? "Checking account" : "Continue"}</Button>
-                </form>
-              ) : (
-                <button type="button" className="text-sm font-medium text-sky-300" onClick={() => setOtherGoogle(true)}>Use another account</button>
-              )}
-              {error && <p className="text-sm text-rose-300">{error}</p>}
-              <button type="button" className="text-sm text-sky-300" onClick={() => { setError(""); setGate("signin"); }}>Back to sign in</button>
-            </div>
           )}
           {gate === "reset" && (
             <form className="space-y-4" onSubmit={submitReset}>
               <p className="text-sm font-semibold text-white">Reset password</p>
               <label className="block"><span className="kazi-label">Email address</span><input className="kazi-input" type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-              <label className="block"><span className="kazi-label">New password</span><input className="kazi-input" type="password" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
-              <label className="block"><span className="kazi-label">Confirm password</span><input className="kazi-input" type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} /></label>
               {error && <p className="text-sm text-rose-300">{error}</p>}
               <div className="flex items-center justify-between">
                 <button type="button" className="text-sm text-sky-300" onClick={() => setGate("signin")}>Back</button>
-                <Button type="submit" disabled={busy}>{busy ? "Updating" : "Update password"}</Button>
+                <Button type="submit" disabled={busy}>{busy ? "Sending" : "Send reset link"}</Button>
               </div>
+            </form>
+          )}
+          {gate === "set-password" && (
+            <form className="space-y-4" onSubmit={submitNewPassword}>
+              <p className="text-sm font-semibold text-white">Choose a new password</p>
+              <label className="block"><span className="kazi-label">New password</span><input className="kazi-input" type="password" autoComplete="new-password" value={nextPassword} onChange={(event) => setNextPassword(event.target.value)} /></label>
+              <label className="block"><span className="kazi-label">Confirm password</span><input className="kazi-input" type="password" autoComplete="new-password" value={confirm} onChange={(event) => setConfirm(event.target.value)} /></label>
+              {error && <p className="text-sm text-rose-300">{error}</p>}
+              <Button type="submit" disabled={busy}>{busy ? "Updating" : "Update password"}</Button>
             </form>
           )}
         </div>

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { initials } from "../../data/format";
-import { isAdminUser } from "../../data/seed";
+import { isAdminUser } from "../../data/authorization";
 import Logo from "./Logo";
 
 const LINKS = [

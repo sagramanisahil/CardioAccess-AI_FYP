@@ -4,7 +4,7 @@ import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import PageHeader from "../components/ui/PageHeader";
 import { downloadText, formatWhen } from "../data/format";
-import { ADMIN_EMAIL, isAdminUser } from "../data/seed";
+import { isAdminUser } from "../data/authorization";
 import { useApp } from "../hooks/useApp";
 import { useAuth } from "../hooks/useAuth";
 
@@ -22,7 +22,7 @@ export default function AdminUsersPage() {
   );
 
   if (!isAdminUser(user)) {
-    return <section className="card p-6 text-sm text-slate-600">Only the administrator signed in with {ADMIN_EMAIL} can manage users.</section>;
+    return <section className="card p-6 text-sm text-slate-600">Only an administrator can manage users.</section>;
   }
 
   const exportAudit = () => {
@@ -33,7 +33,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="page-wrap">
-      <PageHeader eyebrow="Administration" title="Manage users" description={`Signed in as ${ADMIN_EMAIL}. This screen verifies, deactivates, and sets Clinician or Nurse roles. It does not open another user’s case files.`} />
+      <PageHeader eyebrow="Administration" title="Manage users" description={`Signed in as ${user.email}. User management requires the protected FastAPI admin API.`} />
       <section className="card overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4">
           <h2 className="font-display text-base font-semibold">Registered users</h2>
@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
         </table>
         </div>
         <p className="m-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Only {ADMIN_EMAIL} can open this screen. Other accounts cannot be given the Admin role, and that email cannot be used to register or sign in with Google.
+          Public registration cannot grant Admin access. Configure role changes in the authenticated backend, not in the browser.
         </p>
         {notice && <p className="mt-2 text-sm text-slate-600">{notice}</p>}
       </section>
