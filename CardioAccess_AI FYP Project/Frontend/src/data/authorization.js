@@ -1,29 +1,56 @@
+
 export function isAdminUser(account) {
-  return Boolean(account && account.role?.toLowerCase() === "admin");
+  return Boolean(
+    account && account.role?.toLowerCase() === "admin"
+  );
 }
 
 const ROLE_ACCESS = {
-  Admin: ["*"],
+  Admin: [
+    "/",
+    "/admin/users",
+    "/settings",
+  ],
+
   Clinician: [
     "/",
     "/cases/new",
     "/cases",
-    "/referrals",
+    "/screening-review",
     "/analytics",
     "/protocols",
     "/settings",
   ],
-  Nurse: ["/", "/cases/new", "/cases", "/protocols", "/settings"],
+
+  Nurse: [
+    "/",
+    "/cases/new",
+    "/cases",
+    "/screening-review",
+    "/analytics",
+    "/protocols",
+    "/settings",
+  ],
 };
 
 export function canAccessPath(user, pathname) {
   if (!user) return false;
-  const allowedPaths = ROLE_ACCESS[user.role] || [];
-  if (allowedPaths.includes("*")) return true;
+
+  const role = Object.keys(ROLE_ACCESS).find(
+    (key) => key.toLowerCase() === user.role?.toLowerCase()
+  );
+
+  const allowedPaths = ROLE_ACCESS[role] || [];
 
   return allowedPaths.some((path) => {
-    if (path === "/") return pathname === "/";
-    return pathname === path || pathname.startsWith(`${path}/`);
+    if (path === "/") {
+      return pathname === "/";
+    }
+
+    return (
+      pathname === path ||
+      pathname.startsWith(`${path}/`)
+    );
   });
 }
 

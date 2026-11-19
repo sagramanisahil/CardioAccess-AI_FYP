@@ -11,6 +11,7 @@ import AppLayout from "../layouts/AppLayout";
 import { canAccessPath } from "../data/authorization";
 import { useAuth } from "../hooks/useAuth";
 
+import AdminDashboardPage from "../pages/AdminDashboardPage";
 import AdminUsersPage from "../pages/AdminUsersPage";
 import AnalyticsPage from "../pages/AnalyticsPage";
 import CaseLogPage from "../pages/CaseLogPage";
@@ -21,7 +22,7 @@ import EchoAnalysisPage from "../pages/EchoAnalysisPage";
 import MultimodalPage from "../pages/MultimodalPage";
 import NewCasePage from "../pages/NewCasePage";
 import ProtocolsPage from "../pages/ProtocolsPage";
-import ReferralQueuePage from "../pages/ReferralQueuePage";
+import ScreeningReviewPage from "../pages/ScreeningReviewPage";
 import RegisterPage from "../pages/RegisterPage";
 import SettingsPage from "../pages/SettingsPage";
 import SignInPage from "../pages/SignInPage";
@@ -73,21 +74,35 @@ function Guest({ children }) {
   return children;
 }
 
+function RoleDashboard() {
+  const { user } = useAuth();
+  const role = String(user?.role || "").toLowerCase();
+
+  if (role === "admin") {
+    return <AdminDashboardPage />;
+  }
+
+  if (role === "clinician" || role === "nurse") {
+    return <DashboardPage />;
+  }
+
+  return (
+    <div className="p-8 text-sm text-slate-600">
+      Your account does not have an assigned dashboard role.
+      Please contact an administrator.
+    </div>
+  );
+}
+
 function LegacyReferralRedirect() {
   const { caseId } = useParams();
 
-  return (
-    <Navigate
-      to={`/cases/${caseId}`}
-      replace
-    />
-  );
+  return <Navigate to={`/cases/${caseId}`} replace />;
 }
 
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* Public authentication routes */}
       <Route
         path="/signin"
         element={
@@ -106,7 +121,6 @@ export default function AppRoutes() {
         }
       />
 
-      {/* Authenticated application */}
       <Route
         element={
           <Protected>
@@ -116,14 +130,13 @@ export default function AppRoutes() {
       >
         <Route
           index
-          element={<DashboardPage />}
+          element={<RoleDashboard />}
           handle={{
             crumb: "Home",
             title: "Dashboard",
           }}
         />
 
-        {/* Case submission */}
         <Route
           path="cases/new"
           element={
@@ -137,7 +150,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Case history */}
         <Route
           path="cases"
           element={
@@ -151,7 +163,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Case results */}
         <Route
           path="cases/:caseId"
           element={
@@ -165,7 +176,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* ECG analysis */}
         <Route
           path="cases/:caseId/ecg"
           element={
@@ -179,7 +189,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Echocardiography analysis */}
         <Route
           path="cases/:caseId/echo"
           element={
@@ -193,7 +202,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Multimodal analysis */}
         <Route
           path="cases/:caseId/multimodal"
           element={
@@ -207,12 +215,11 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Screening review */}
         <Route
-          path="referrals"
+          path="screening-review"
           element={
             <RoleAccess>
-              <ReferralQueuePage />
+              <ScreeningReviewPage />
             </RoleAccess>
           }
           handle={{
@@ -221,24 +228,20 @@ export default function AppRoutes() {
           }}
         />
 
-        {/*
-          Legacy referral-summary links now lead
-          to the existing case results page.
-        */}
+        <Route
+          path="referrals"
+          element={<Navigate to="/screening-review" replace />}
+        />
+
         <Route
           path="referrals/:caseId"
-          element={
-            <RoleAccess>
-              <LegacyReferralRedirect />
-            </RoleAccess>
-          }
+          element={<LegacyReferralRedirect />}
           handle={{
             crumb: "Screening Review",
             title: "Case Results",
           }}
         />
 
-        {/* Analytics */}
         <Route
           path="analytics"
           element={
@@ -252,7 +255,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Screening protocols */}
         <Route
           path="protocols"
           element={
@@ -266,7 +268,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Account settings */}
         <Route
           path="settings"
           element={
@@ -280,7 +281,6 @@ export default function AppRoutes() {
           }}
         />
 
-        {/* Administration */}
         <Route
           path="admin/users"
           element={
@@ -295,7 +295,6 @@ export default function AppRoutes() {
         />
       </Route>
 
-      {/* Unknown routes */}
       <Route
         path="*"
         element={<Navigate to="/" replace />}

@@ -394,7 +394,7 @@ export default function ProtocolsPage() {
           </p>
 
           <Link
-            to="/referrals"
+            to="/screening-review"
             className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-clinic-blue hover:underline"
           >
             Open Screening Review
@@ -475,3 +475,4 @@ function Band({
     </div>
   );
 }
+

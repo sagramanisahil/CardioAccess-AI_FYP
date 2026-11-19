@@ -130,7 +130,7 @@ function getModality(record) {
   return "Not recorded";
 }
 
-export default function ReferralQueuePage() {
+export default function ScreeningReviewPage() {
   const {
     cases = [],
     casesLoading,

@@ -77,7 +77,7 @@ export default function CaseResultPage() {
               View case details
             </Link>
             {referral && (
-              <Link to={`/referrals/${record.id}`} className="rounded-lg bg-navy-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-900">
+              <Link to={`/cases/${record.id}`} className="rounded-lg bg-navy-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-navy-900">
                 Generate Referral Summary
               </Link>
             )}
@@ -91,3 +91,4 @@ export default function CaseResultPage() {
     </PageContainer>
   );
 }
+

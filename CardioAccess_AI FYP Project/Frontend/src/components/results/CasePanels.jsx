@@ -45,7 +45,7 @@ export function TriageBanner({ record, referral }) {
           <Download size={14} /> Summary
         </Button>
         {referral && (
-          <Link to={`/referrals/${record.id}`} className="rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-clinic-blue ring-1 ring-slate-200">
+          <Link to={`/cases/${record.id}`} className="rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-clinic-blue ring-1 ring-slate-200">
             Referral summary
           </Link>
         )}
@@ -262,3 +262,4 @@ export function StatusNotice({ record }) {
   }
   return null;
 }
+

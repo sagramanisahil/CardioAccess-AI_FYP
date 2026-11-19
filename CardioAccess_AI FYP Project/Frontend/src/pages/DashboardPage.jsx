@@ -638,7 +638,7 @@ export default function DashboardPage() {
               </ul>
 
               <Link
-                to="/referrals"
+                to="/screening-review"
                 className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-clinic-blue"
               >
                 Open Screening Review
@@ -670,7 +670,7 @@ export default function DashboardPage() {
 
               {!isAdmin && !isNurse && (
                 <Quick
-                  to="/referrals"
+                  to="/screening-review"
                   icon={ClipboardList}
                   label="Open Screening Review"
                 />
@@ -739,3 +739,4 @@ function Quick({
     </Link>
   );
 }
+

@@ -16,13 +16,18 @@ import { initials } from "../../data/format";
 import { isAdminUser } from "../../data/authorization";
 import Logo from "./Logo";
 
-const LINKS = [
+const CLINICAL_LINKS = [
   { to: "/", label: "Dashboard" },
   { to: "/cases/new", label: "New Screening" },
   { to: "/cases", label: "Patient Cases" },
-  { to: "/referrals", label: "Screening Review" },
+  { to: "/screening-review", label: "Screening Review" },
   { to: "/analytics", label: "Analytics" },
   { to: "/protocols", label: "Protocols" },
+];
+
+const ADMIN_LINKS = [
+  { to: "/", label: "Dashboard" },
+  { to: "/admin/users", label: "Users" },
 ];
 
 function isCurrent(to, pathname) {
@@ -52,15 +57,8 @@ function getTriage(item) {
     return item.triage;
   }
 
-  if (
-    item?.triage &&
-    typeof item.triage === "object"
-  ) {
-    return (
-      item.triage.category ||
-      item.triage.label ||
-      null
-    );
+  if (item?.triage && typeof item.triage === "object") {
+    return item.triage.category || item.triage.label || null;
   }
 
   return null;
@@ -104,31 +102,25 @@ export default function AppHeader({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
-
-  const [open, setOpen] = useState(null);
   const rootRef = useRef(null);
 
-  const screeningAlerts = alerts
-    .map((item) => ({
-      ...item,
-      reviewFlags: getFlags(item),
-    }))
-    .filter((item) => item.reviewFlags.length > 0);
+  const [open, setOpen] = useState(null);
 
-  const urgentCount = screeningAlerts.filter(
-    (item) =>
-      item.reviewFlags.includes("Urgent Referral")
+  const isAdmin = isAdminUser(user);
+  const links = isAdmin ? ADMIN_LINKS : CLINICAL_LINKS;
+
+  const screeningAlerts = isAdmin
+    ? []
+    : alerts
+        .map((item) => ({
+          ...item,
+          reviewFlags: getFlags(item),
+        }))
+        .filter((item) => item.reviewFlags.length > 0);
+
+  const urgentCount = screeningAlerts.filter((item) =>
+    item.reviewFlags.includes("Urgent Referral")
   ).length;
-
-  // Clinicians and nurses share the clinical screening navigation.
-  // Administrators see management navigation only, not clinical workflows.
-  const links = isAdminUser(user)
-    ? [
-        { to: "/", label: "Dashboard" },
-        { to: "/admin/users", label: "Users" },
-        { to: "/protocols", label: "Protocols" },
-      ]
-    : LINKS;
 
   useEffect(() => {
     setOpen(null);
@@ -149,9 +141,7 @@ export default function AppHeader({
   }, []);
 
   function toggle(key) {
-    setOpen((current) =>
-      current === key ? null : key
-    );
+    setOpen((current) => current === key ? null : key);
   }
 
   function goTo(path) {
@@ -168,7 +158,7 @@ export default function AppHeader({
 
     return caseId
       ? `/cases/${caseId}`
-      : "/referrals";
+      : "/screening-review";
   }
 
   return (
@@ -177,28 +167,20 @@ export default function AppHeader({
       className="app-header no-print sticky top-0 z-40 border-b border-white/10 bg-[#071426]/95 backdrop-blur-md"
     >
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center gap-3 px-4 lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-6">
-
-        {/* Logo */}
         <Logo light compact />
 
-        {/* Desktop navigation */}
         <nav
           className="hidden items-center justify-center gap-0.5 lg:flex"
           aria-label="Primary"
         >
           {links.map((link) => {
-            const active = isCurrent(
-              link.to,
-              location.pathname
-            );
+            const active = isCurrent(link.to, location.pathname);
 
             return (
               <Link
                 key={link.to}
                 to={link.to}
-                aria-current={
-                  active ? "page" : undefined
-                }
+                aria-current={active ? "page" : undefined}
                 className={`nav-link ${
                   active ? "nav-link-active" : ""
                 }`}
@@ -209,62 +191,50 @@ export default function AppHeader({
           })}
         </nav>
 
-        {/* Header actions */}
         <div className="ml-auto flex items-center gap-1 lg:ml-0 lg:justify-self-end">
+          {!isAdmin && (
+            <div className="relative">
+              <button
+                type="button"
+                className="icon-btn relative"
+                aria-label="Screening notifications"
+                aria-expanded={open === "notes"}
+                onClick={() => toggle("notes")}
+              >
+                <Bell size={18} />
 
-          {/* Screening notifications: clinical accounts only */}
-          {!isAdminUser(user) && <div className="relative">
-            <button
-              type="button"
-              className="icon-btn relative"
-              aria-label="Screening notifications"
-              aria-expanded={open === "notes"}
-              onClick={() => toggle("notes")}
-            >
-              <Bell size={18} />
+                {screeningAlerts.length > 0 && (
+                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                    {Math.min(screeningAlerts.length, 9)}
+                  </span>
+                )}
+              </button>
 
-              {screeningAlerts.length > 0 && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
-                  {Math.min(
-                    screeningAlerts.length,
-                    9
-                  )}
-                </span>
-              )}
-            </button>
-
-            {open === "notes" && (
-              <div className="menu-pop right-0 w-80">
-
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <p className="text-sm font-semibold text-navy-950">
-                    Screening review alerts
-                  </p>
-
-                  <p className="text-xs text-slate-500">
-                    {urgentCount} urgent ·{" "}
-                    {screeningAlerts.length} flagged
-                  </p>
-                </div>
-
-                <div className="max-h-72 overflow-y-auto">
-                  {screeningAlerts.length === 0 && (
-                    <p className="px-4 py-6 text-sm text-slate-500">
-                      No flagged screening results
-                      are currently available.
+              {open === "notes" && (
+                <div className="menu-pop right-0 w-80">
+                  <div className="border-b border-slate-100 px-4 py-3">
+                    <p className="text-sm font-semibold text-navy-950">
+                      Screening review alerts
                     </p>
-                  )}
 
-                  {screeningAlerts
-                    .slice(0, 6)
-                    .map((item, index) => {
-                      const urgent =
-                        item.reviewFlags.includes(
-                          "Urgent Referral"
-                        );
+                    <p className="text-xs text-slate-500">
+                      {urgentCount} urgent · {screeningAlerts.length} flagged
+                    </p>
+                  </div>
 
-                      const primaryFlag =
-                        item.reviewFlags[0];
+                  <div className="max-h-72 overflow-y-auto">
+                    {screeningAlerts.length === 0 && (
+                      <p className="px-4 py-6 text-sm text-slate-500">
+                        No flagged screening results are currently available.
+                      </p>
+                    )}
+
+                    {screeningAlerts.slice(0, 6).map((item, index) => {
+                      const urgent = item.reviewFlags.includes(
+                        "Urgent Referral"
+                      );
+
+                      const primaryFlag = item.reviewFlags[0];
 
                       const caseCode =
                         item.caseCode ||
@@ -274,23 +244,16 @@ export default function AppHeader({
 
                       return (
                         <button
-                          key={
-                            item.id ||
-                            item.caseId ||
-                            index
-                          }
+                          key={item.id || item.caseId || index}
                           type="button"
-                          className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-white/5"
-                          onClick={() =>
-                            goTo(getCasePath(item))
-                          }
+                          className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-slate-50"
+                          onClick={() => goTo(getCasePath(item))}
                         >
                           <span
                             className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
                               urgent
                                 ? "bg-red-600"
-                                : primaryFlag ===
-                                    "Needs Review"
+                                : primaryFlag === "Needs Review"
                                   ? "bg-amber-500"
                                   : "bg-purple-600"
                             }`}
@@ -308,22 +271,20 @@ export default function AppHeader({
                         </button>
                       );
                     })}
-                </div>
+                  </div>
 
-                <button
-                  type="button"
-                  className="w-full border-t border-slate-100 px-4 py-2.5 text-left text-sm font-medium text-clinic-blue hover:bg-white/5"
-                  onClick={() =>
-                    goTo("/referrals")
-                  }
-                >
-                  Open Screening Review
-                </button>
-              </div>
-            )}
-          </div>
-            } 
-          {/* Help */}
+                  <button
+                    type="button"
+                    className="w-full border-t border-slate-100 px-4 py-2.5 text-left text-sm font-medium text-clinic-blue hover:bg-slate-50"
+                    onClick={() => goTo("/screening-review")}
+                  >
+                    Open Screening Review
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="relative hidden sm:block">
             <button
               type="button"
@@ -337,33 +298,54 @@ export default function AppHeader({
 
             {open === "help" && (
               <div className="menu-pop right-0 w-72 p-4">
-                <p className="text-sm font-semibold text-navy-950">
-                  Screening support
-                </p>
+                {isAdmin ? (
+                  <>
+                    <p className="text-sm font-semibold text-navy-950">
+                      Administrator Help
+                    </p>
 
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  CardioAccess AI provides preliminary
-                  screening support. Review flags and
-                  screening categories are not diagnoses
-                  or autonomous referral decisions.
-                  A qualified healthcare professional
-                  determines appropriate next steps.
-                </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Manage user accounts, update roles,
+                      and control account access from
+                      the administration workspace.
+                    </p>
 
-                <button
-                  type="button"
-                  className="mt-3 text-sm font-semibold text-clinic-blue"
-                  onClick={() =>
-                    goTo("/protocols")
-                  }
-                >
-                  View screening protocols
-                </button>
+                    <button
+                      type="button"
+                      className="mt-3 text-sm font-semibold text-clinic-blue"
+                      onClick={() => goTo("/admin/users")}
+                    >
+                      Open User Management
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-navy-950">
+                      Screening Support
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      CardioAccess AI provides preliminary
+                      screening support. Review flags and
+                      screening categories are not diagnoses
+                      or autonomous referral decisions.
+                      A qualified healthcare professional
+                      determines appropriate next steps.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="mt-3 text-sm font-semibold text-clinic-blue"
+                      onClick={() => goTo("/protocols")}
+                    >
+                      View Screening Protocols
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
 
-          {/* User menu */}
           <div className="relative">
             <button
               type="button"
@@ -372,24 +354,22 @@ export default function AppHeader({
               onClick={() => toggle("user")}
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-950 text-xs font-semibold text-white">
-                {user
-                  ? initials(user.name)
-                  : ""}
+                {user ? initials(user.name) : ""}
               </span>
 
               <span className="hidden text-left md:block">
-                <span className="block max-w-[140px] truncate text-sm font-semibold leading-4 text-navy-950">
+                <span className="block max-w-[140px] truncate text-sm font-semibold leading-4 text-white">
                   {user?.name}
                 </span>
 
-                <span className="block text-[11px] text-slate-500">
+                <span className="block text-[11px] text-slate-300">
                   {user?.role}
                 </span>
               </span>
 
               <ChevronDown
                 size={14}
-                className="hidden text-slate-400 md:block"
+                className="hidden text-slate-300 md:block"
               />
             </button>
 
@@ -405,29 +385,25 @@ export default function AppHeader({
                   </p>
 
                   <p className="mt-1 text-xs text-teal-700">
-                    {user?.role} ·{" "}
-                    {user?.facility}
+                    {user?.role}
+                    {user?.facility ? ` · ${user.facility}` : ""}
                   </p>
                 </div>
 
                 <button
                   type="button"
                   className="menu-item"
-                  onClick={() =>
-                    goTo("/settings")
-                  }
+                  onClick={() => goTo("/settings")}
                 >
                   <Settings size={15} />
                   Settings
                 </button>
 
-                {isAdminUser(user) && (
+                {isAdmin && (
                   <button
                     type="button"
                     className="menu-item"
-                    onClick={() =>
-                      goTo("/admin/users")
-                    }
+                    onClick={() => goTo("/admin/users")}
                   >
                     <Users size={15} />
                     Manage users
@@ -446,48 +422,28 @@ export default function AppHeader({
             )}
           </div>
 
-          {/* Mobile menu toggle */}
           <button
             type="button"
             className="icon-btn mobile-nav-toggle"
-            aria-label={
-              open === "nav"
-                ? "Close menu"
-                : "Open menu"
-            }
+            aria-label={open === "nav" ? "Close menu" : "Open menu"}
             onClick={() => toggle("nav")}
           >
-            {open === "nav" ? (
-              <X size={18} />
-            ) : (
-              <Menu size={18} />
-            )}
+            {open === "nav" ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile navigation */}
       {open === "nav" && (
         <div className="border-t border-slate-200 bg-white px-3 py-3 lg:hidden">
-          <nav
-            className="grid gap-1"
-            aria-label="Mobile"
-          >
+          <nav className="grid gap-1" aria-label="Mobile">
             {links.map((link) => {
-              const active = isCurrent(
-                link.to,
-                location.pathname
-              );
+              const active = isCurrent(link.to, location.pathname);
 
               return (
                 <Link
                   key={link.to}
                   to={link.to}
-                  aria-current={
-                    active
-                      ? "page"
-                      : undefined
-                  }
+                  aria-current={active ? "page" : undefined}
                   className={`rounded-lg px-3 py-2.5 text-sm font-medium ${
                     active
                       ? "bg-blue-50 text-clinic-blue"

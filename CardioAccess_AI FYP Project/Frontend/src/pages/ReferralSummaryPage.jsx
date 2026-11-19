@@ -15,7 +15,7 @@ export default function ReferralSummaryPage() {
     return (
       <section className="card p-6 text-sm leading-6 text-slate-600">
         A referral summary is available only for Needs Review and Urgent Referral results.
-        <div className="mt-3"><Link className="font-semibold text-clinic-blue" to="/referrals">Back to queue</Link></div>
+        <div className="mt-3"><Link className="font-semibold text-clinic-blue" to="/screening-review">Back to queue</Link></div>
       </section>
     );
   }
@@ -90,7 +90,7 @@ export default function ReferralSummaryPage() {
           This summary matches the screening result for {record.id}. It supports referral decisions and is not a definitive diagnosis.
         </p>
       </article>
-      <Link to="/referrals" className="no-print text-sm font-semibold text-clinic-blue">Back to queue</Link>
+      <Link to="/screening-review" className="no-print text-sm font-semibold text-clinic-blue">Back to queue</Link>
     </PageContainer>
   );
 }
@@ -103,3 +103,4 @@ function Block({ title, children }) {
     </div>
   );
 }
+
