@@ -28,24 +28,24 @@ import { supabase } from "../lib/supabase";
 
 const MAX_NOTES_LENGTH = 500;
 
-// These are proposed frontend limits.
-// Confirm that your FastAPI upload policy matches.
 const FILE_RULES = {
   ecg: {
     title: "ECG Recording",
-    accept: ".zip,.csv",
-    extensions: [".zip", ".csv"],
+    accept: ".csv,.npy,.zip",
+    extensions: [".csv", ".npy", ".zip"],
     maxSize: 10 * 1024 * 1024,
     maxLabel: "10 MB",
-    description: "ZIP or CSV",
+    description: "CSV, NPY, or WFDB ZIP",
+    hint: "For WFDB, place the matching .hea and .dat files together in one .zip archive.",
   },
   echo: {
     title: "Echocardiogram Study",
-    accept: ".avi,.mp4,.nii,.nii.gz",
-    extensions: [".avi", ".mp4", ".nii", ".nii.gz"],
+    accept: ".mp4,.avi,.dcm,.nii,.nii.gz",
+    extensions: [".mp4", ".avi", ".dcm", ".nii", ".nii.gz"],
     maxSize: 100 * 1024 * 1024,
     maxLabel: "100 MB",
-    description: "AVI, MP4, NII or NII.GZ",
+    description: "MP4, AVI, DICOM (.dcm), NII, or NII.GZ",
+    hint: "Upload an ultrasound study containing the necessary frames for your analysis.",
   },
 };
 
@@ -979,10 +979,10 @@ function FileUploadStep({
       {mode?.id === "both" && (
         <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
           <p className="text-xs leading-5 text-amber-900">
-            Both files must be selected before
-            submission. Uploading two files
-            does not automatically establish
-            multimodal fusion eligibility.
+            Select one ECG recording and one Echo study for the same patient.
+            The ECG accepts CSV, NPY, or a ZIP containing paired WFDB files;
+            Echo accepts MP4, AVI, DICOM, NII, or NII.GZ.
+            Uploading both does not automatically establish multimodal fusion eligibility.
           </p>
         </div>
       )}
@@ -1118,6 +1118,10 @@ function UploadField({
 
           <span className="mt-1 text-xs text-slate-400">
             Maximum {rule.maxLabel}
+          </span>
+
+          <span className="mt-2 text-xs leading-5 text-slate-500">
+            {rule.hint}
           </span>
 
           <input
